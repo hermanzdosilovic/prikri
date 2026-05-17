@@ -1,0 +1,15 @@
+CC = gcc
+CFLAGS = -std=c99 -Wall -Wextra -Wnull-dereference -Werror -Wfatal-errors -pedantic -pedantic-errors
+LDFLAGS = -lcrypto
+TARGET = prikri
+SRC = main.c
+
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET) $(LDFLAGS)
+
+clean:
+	rm -f $(TARGET)
+
+.PHONY: all clean

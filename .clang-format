@@ -1,0 +1,19 @@
+BasedOnStyle: LLVM
+
+ColumnLimit: 80
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+SortIncludes: true
+SpaceAfterCStyleCast: true
+
+AlignAfterOpenBracket: AlwaysBreak
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+BreakAfterOpenBracketFunction: true
+BreakBeforeCloseBracketFunction: true
+BreakBeforeParameters: true
