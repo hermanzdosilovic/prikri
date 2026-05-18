@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
+SYMMETRIC_CIPHER="${1:-aes-256-cbc}"
+
 echo "This is my password for testing purposes." > password.txt
 
-./prikri e Makefile -p password.txt # Creates Makefile.enc
+dd if=/dev/urandom of=./random.bin bs=1M count=1024 status=progress # Creates a random 1GB file named random.bin
 
-./prikri d Makefile.enc -p password.txt # Creates Makefile.enc.dec
+./prikri e random.bin -s "$SYMMETRIC_CIPHER" -p password.txt # Creates random.bin.enc
 
-cmp Makefile Makefile.enc.dec && \
+./prikri d random.bin.enc -s "$SYMMETRIC_CIPHER" -p password.txt # Creates random.bin.enc.dec
+
+cmp random.bin random.bin.enc.dec && \
     echo "Test PASSED: decrypted file matches original." || \
     echo "Test FAILED: decrypted file does not match original."
+
+rm *.bin *.enc *.dec password.txt

@@ -3,7 +3,7 @@ CFLAGS = -std=c99 -Wall -Wextra -Wnull-dereference -Werror -Wfatal-errors -pedan
 LDFLAGS = -lcrypto
 THIRD_PARTY_HEADERS_DIR = ThirdParty/Include
 TARGET = prikri
-SRC = Src/Main.c Src/Password.c Src/ByteBuffer.c Src/KDF.c Src/AES.c
+SRC = Src/Main.c Src/Password.c Src/ByteBuffer.c Src/KDF.c
 
 all: $(TARGET)
 

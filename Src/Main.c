@@ -1,4 +1,3 @@
-#include "AES.h"
 #include "ByteBuffer.h"
 #include "KDF.h"
 #include "Password.h"
@@ -42,11 +41,8 @@
 #define BOOLEAN_ARGS BOOLEAN_ARG(help, "-h", "Show help")
 
 #include <easyargs.h>
-
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
 int main(int argc, char **argv) {
     args_t args = make_default_args();
@@ -159,9 +155,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    size_t keySizeInBytes = 0;
+    const EVP_CIPHER *cipher;
     if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
-        keySizeInBytes = AES_KEY_SIZE_IN_BYTES;
+        cipher = EVP_aes_256_cbc();
+    } else if (!strcmp(args.symmetricAlgorithm, "des-cbc")) {
+        cipher = EVP_des_cbc();
+    } else if (!strcmp(args.symmetricAlgorithm, "3des-cbc")) {
+        cipher = EVP_des_ede3_cbc();
     } else {
         fprintf(
             stderr,
@@ -171,6 +171,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    size_t keySizeInBytes =
+        EVP_CIPHER_key_length(cipher) * sizeof(unsigned char);
     unsigned char *key;
     if (!strcmp(args.keyDerivationFunction, "zeropad")) {
         key = KDFPadWithZeros(password, passwordSizeInBytes, keySizeInBytes);
@@ -183,63 +185,77 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    size_t ivSizeInBytes = EVP_CIPHER_iv_length(cipher) * sizeof(unsigned char);
+    unsigned char *iv = (unsigned char *) malloc(ivSizeInBytes);
+    if (!iv) {
+        fprintf(stderr, "Failed to allocate memory for IV.\n");
+        return 1;
+    }
+
     unsigned char *outputBytes;
-    size_t outputBytesSizeInBytes;
+    size_t outputBytesSizeInBytes = 0;
 
     if (args.operation == 'e') {
-        if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
-            unsigned char *iv;
-            outputBytesSizeInBytes = AES256CBCEncrypt(
-                inputBytes, inputBytesSizeInBytes, key, &iv, &outputBytes
-            );
+        RAND_bytes(iv, ivSizeInBytes);
 
-            fwrite(
-                iv,
-                sizeof(unsigned char),
-                AES_IV_SIZE_IN_BYTES,
-                outputFileHandle
-            );
+        EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+        EVP_CIPHER_CTX_init(ctx);
 
-            free(iv);
-        } else {
-            fprintf(
-                stderr,
-                "Unsupported symmetric algorithm: %s\n",
-                args.symmetricAlgorithm
-            );
+        EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv);
+
+        outputBytes = (unsigned char *) malloc(
+            (inputBytesSizeInBytes + EVP_CIPHER_block_size(cipher)) *
+            sizeof(unsigned char)
+        );
+        if (!outputBytes) {
+            fprintf(stderr, "Failed to allocate memory for output bytes.\n");
             return 1;
         }
+
+        int outLen = 0;
+        EVP_EncryptUpdate(
+            ctx, outputBytes, &outLen, inputBytes, inputBytesSizeInBytes
+        );
+
+        outputBytesSizeInBytes = outLen;
+        EVP_EncryptFinal_ex(ctx, outputBytes + outLen, &outLen);
+        outputBytesSizeInBytes += outLen;
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        fwrite(iv, sizeof(unsigned char), ivSizeInBytes, outputFileHandle);
+
+        free(iv);
     } else {
-        if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
-            if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
-                fprintf(
-                    stderr, "Invalid input file: too small to contain IV.\n"
-                );
-                return 1;
-            }
+        memcpy(iv, inputBytes, ivSizeInBytes);
 
-            unsigned char *iv = (unsigned char *) malloc(
-                AES_IV_SIZE_IN_BYTES * sizeof(unsigned char)
-            );
-            memcpy(iv, inputBytes, AES_IV_SIZE_IN_BYTES);
+        EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+        EVP_CIPHER_CTX_init(ctx);
 
-            outputBytesSizeInBytes = AES256CBCDecrypt(
-                inputBytes + AES_IV_SIZE_IN_BYTES,
-                inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES,
-                key,
-                iv,
-                &outputBytes
-            );
+        EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv);
 
-            free(iv);
-        } else {
-            fprintf(
-                stderr,
-                "Unsupported symmetric algorithm: %s\n",
-                args.symmetricAlgorithm
-            );
-            return 1;
-        }
+        outputBytes = (unsigned char *) malloc(
+            (inputBytesSizeInBytes - ivSizeInBytes +
+             EVP_CIPHER_block_size(cipher)) *
+            sizeof(unsigned char)
+        );
+
+        int outLen = 0;
+        EVP_DecryptUpdate(
+            ctx,
+            outputBytes,
+            &outLen,
+            inputBytes + ivSizeInBytes,
+            inputBytesSizeInBytes - ivSizeInBytes
+        );
+
+        outputBytesSizeInBytes = outLen;
+        EVP_DecryptFinal_ex(ctx, outputBytes + outLen, &outLen);
+        outputBytesSizeInBytes += outLen;
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        free(iv);
     }
 
     fwrite(
