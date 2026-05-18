@@ -3,6 +3,6 @@
 
 #include <stdio.h>
 
-size_t ReadFileToBuffer(FILE *fileHandle, unsigned char **buffer);
+size_t ReadFileToBuffer(FILE *fileHandle, void **buffer);
 
 #endif

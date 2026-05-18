@@ -2,8 +2,46 @@
 #include "ByteBuffer.h"
 #include "KDF.h"
 #include "Password.h"
-#include "ProgramArguments.h"
-#include "Usage.h"
+
+#define REQUIRED_ARGS                                                          \
+    REQUIRED_CHAR_ARG(                                                         \
+        operation,                                                             \
+        "operation",                                                           \
+        "Operation to perform: 'e' for encrypt, 'd' for decrypt"               \
+    )                                                                          \
+    REQUIRED_STRING_ARG(                                                       \
+        inputFilePath, "input file", "Input file path. Use '-' for stdin"      \
+    )                                                                          \
+    REQUIRED_STRING_ARG(                                                       \
+        outputFilePath, "output file", "Output file path. Use '-' for stdout"  \
+    )
+
+#define OPTIONAL_ARGS                                                          \
+    OPTIONAL_STRING_ARG(                                                       \
+        passwordFilePath,                                                      \
+        "password.txt",                                                        \
+        "-p",                                                                  \
+        "password file",                                                       \
+        "Password file path"                                                   \
+    )                                                                          \
+    OPTIONAL_STRING_ARG(                                                       \
+        symmetricAlgorithm,                                                    \
+        "aes-256-cbc",                                                         \
+        "-s",                                                                  \
+        "symmetric algorithm",                                                 \
+        "Symmetric encryption algorithm to use"                                \
+    )                                                                          \
+    OPTIONAL_STRING_ARG(                                                       \
+        keyDerivationFunction,                                                 \
+        "zeropad",                                                             \
+        "-k",                                                                  \
+        "key derivation function",                                             \
+        "Key derivation function to use"                                       \
+    )
+
+#define BOOLEAN_ARGS BOOLEAN_ARG(help, "-h", "Show help")
+
+#include <easyargs.h>
 
 #include <stddef.h>
 #include <stdio.h>
@@ -11,48 +49,117 @@
 #include <string.h>
 
 int main(int argc, char **argv) {
-    ProgramArguments *programArguments = ParseProgramArguments(argc, argv);
-    if (!programArguments) {
+    args_t args = make_default_args();
+
+    if (!parse_args(argc, argv, &args) || args.help) {
+        print_help(argv[0]);
+        printf("\nSYMMETRIC ALGORITHMS:\n");
+        printf(
+            "    aes-256-cbc: AES encryption in CBC mode with 256-bit keys\n"
+        );
+        printf("\nKEY DERIVATION FUNCTIONS:\n");
+        printf(
+            "    zeropad: Derive key by padding password with zeros or "
+            "truncating to fit key size\n"
+        );
+        return 1;
+    }
+
+    if (!strcmp(args.inputFilePath, "-") && !args.passwordFilePath) {
+        fprintf(
+            stderr,
+            "Error: --password-file is required when input file is '-'.\n"
+        );
+        return 1;
+    } else if (strcmp(args.outputFilePath, "-") && !args.passwordFilePath) {
+        fprintf(
+            stderr,
+            "Error: --password-file is required when output file is '-'.\n"
+        );
+        return 1;
+    }
+
+    char *password;
+    size_t passwordSizeInBytes;
+    if (args.passwordFilePath) {
+        FILE *passwordFileHandle = fopen(args.passwordFilePath, "rb");
+        if (!passwordFileHandle) {
+            fprintf(
+                stderr,
+                "Failed to open password file: %s\n",
+                args.passwordFilePath
+            );
+            return 1;
+        }
+
+        passwordSizeInBytes =
+            ReadFileToBuffer(passwordFileHandle, (void **) &password);
+        fclose(passwordFileHandle);
+
+        if (!passwordSizeInBytes) {
+            fprintf(
+                stderr,
+                "Failed to read password from file: %s\n",
+                args.passwordFilePath
+            );
+            return 1;
+        }
+    } else {
+        password = PromptForPassword(args.operation == 'e');
+        if (!password) {
+            return 1;
+        }
+        passwordSizeInBytes = strlen(password);
+    }
+
+    FILE *inputFileHandle = strcmp(args.inputFilePath, "-")
+                                ? fopen(args.inputFilePath, "rb")
+                                : stdin;
+    if (!inputFileHandle) {
+        fprintf(stderr, "Failed to open input file: %s\n", args.inputFilePath);
+        return 1;
+    }
+
+    FILE *outputFileHandle = strcmp(args.outputFilePath, "-")
+                                 ? fopen(args.outputFilePath, "wb")
+                                 : stdout;
+    if (!outputFileHandle) {
+        fprintf(
+            stderr, "Failed to open output file: %s\n", args.outputFilePath
+        );
         return 1;
     }
 
     unsigned char *inputBytes;
     size_t inputBytesSizeInBytes =
-        ReadFileToBuffer(programArguments->inputFileHandle, &inputBytes);
+        ReadFileToBuffer(inputFileHandle, (void **) &inputBytes);
     if (!inputBytesSizeInBytes) {
         return 1;
     }
 
-    char *password = PromptForPassword(programArguments->isEncryptionMode);
-    if (!password) {
-        return 1;
-    }
+    if (args.operation == 'e') {
+        unsigned char *key = KDFPadWithZeros(
+            password, passwordSizeInBytes, AES_KEY_SIZE_IN_BYTES
+        );
 
-    if (programArguments->isEncryptionMode) {
-        unsigned char *key =
-            KDFPadWithZeros(password, strlen(password), AES_KEY_SIZE_IN_BYTES);
-
-        unsigned char *iv, *cipherText;
-        size_t cipherTextSizeInBytes = AES256CBCEncrypt(
-            inputBytes, inputBytesSizeInBytes, key, &iv, &cipherText
+        unsigned char *iv, *outputBytes;
+        size_t outputBytesSizeInBytes = AES256CBCEncrypt(
+            inputBytes, inputBytesSizeInBytes, key, &iv, &outputBytes
         );
 
         fwrite(
-            iv,
-            sizeof(unsigned char),
-            AES_IV_SIZE_IN_BYTES,
-            programArguments->outputFileHandle
+            iv, sizeof(unsigned char), AES_IV_SIZE_IN_BYTES, outputFileHandle
         );
         fwrite(
-            cipherText,
+            outputBytes,
             sizeof(unsigned char),
-            cipherTextSizeInBytes,
-            programArguments->outputFileHandle
+            outputBytesSizeInBytes,
+            outputFileHandle
         );
 
         free(key);
         free(iv);
-        free(cipherText);
+        free(outputBytes);
     } else {
         if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
             fprintf(stderr, "Invalid input file: too small to contain IV.\n");
@@ -64,28 +171,29 @@ int main(int argc, char **argv) {
         );
         memcpy(iv, inputBytes, AES_IV_SIZE_IN_BYTES);
 
-        unsigned char *cipherText = inputBytes + AES_IV_SIZE_IN_BYTES;
-        size_t cipherTextSizeInBytes =
-            inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES;
+        unsigned char *key = KDFPadWithZeros(
+            password, passwordSizeInBytes, AES_KEY_SIZE_IN_BYTES
+        );
 
-        unsigned char *key =
-            KDFPadWithZeros(password, strlen(password), AES_KEY_SIZE_IN_BYTES);
-
-        unsigned char *plainText;
-        size_t plainTextSizeInBytes = AES256CBCDecrypt(
-            cipherText, cipherTextSizeInBytes, key, iv, &plainText
+        unsigned char *outputBytes;
+        size_t outputBytesSizeInBytes = AES256CBCDecrypt(
+            inputBytes + AES_IV_SIZE_IN_BYTES,
+            inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES,
+            key,
+            iv,
+            &outputBytes
         );
 
         fwrite(
-            plainText,
+            outputBytes,
             sizeof(unsigned char),
-            plainTextSizeInBytes,
-            programArguments->outputFileHandle
+            outputBytesSizeInBytes,
+            outputFileHandle
         );
 
         free(key);
         free(iv);
-        free(plainText);
+        free(outputBytes);
     }
 
     return 0;
