@@ -24,11 +24,11 @@
         passwordFilePath, "", "-p", "password file", "Password file path"      \
     )                                                                          \
     OPTIONAL_STRING_ARG(                                                       \
-        symmetricAlgorithm,                                                    \
+        symmetricCipher,                                                       \
         "aes-256-cbc",                                                         \
         "-s",                                                                  \
-        "symmetric algorithm",                                                 \
-        "Symmetric encryption algorithm to use"                                \
+        "symmetric cipher",                                                    \
+        "Symmetric cipher to use"                                              \
     )                                                                          \
     OPTIONAL_STRING_ARG(                                                       \
         keyDerivationFunction,                                                 \
@@ -51,13 +51,13 @@ int main(int argc, char **argv) {
 
     if (!parse_args(argc, argv, &args) || args.help) {
         print_help(argv[0]);
-        printf("\nSYMMETRIC ALGORITHMS:\n");
+        printf("\nSUPPORTED SYMMETRIC CIPHERS:\n");
         printf(
             "    aes-256-cbc: AES encryption in CBC mode with 256-bit keys\n"
             "    des-cbc: DES encryption in CBC mode\n"
             "    3des-cbc: Triple DES encryption in CBC mode\n"
         );
-        printf("\nKEY DERIVATION FUNCTIONS:\n");
+        printf("\nSUPPORTED KEY DERIVATION FUNCTIONS:\n");
         printf(
             "    zeropad: Derive key by padding password with zeros or "
             "truncating to fit key size\n"
@@ -169,17 +169,17 @@ int main(int argc, char **argv) {
     }
 
     const EVP_CIPHER *cipher;
-    if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
+    if (!strcmp(args.symmetricCipher, "aes-256-cbc")) {
         cipher = EVP_aes_256_cbc();
-    } else if (!strcmp(args.symmetricAlgorithm, "des-cbc")) {
+    } else if (!strcmp(args.symmetricCipher, "des-cbc")) {
         cipher = EVP_des_cbc();
-    } else if (!strcmp(args.symmetricAlgorithm, "3des-cbc")) {
+    } else if (!strcmp(args.symmetricCipher, "3des-cbc")) {
         cipher = EVP_des_ede3_cbc();
     } else {
         fprintf(
             stderr,
             "Unsupported symmetric algorithm: %s\n",
-            args.symmetricAlgorithm
+            args.symmetricCipher
         );
         return 1;
     }
