@@ -86,6 +86,12 @@ int main(int argc, char **argv) {
             args.outputFilePath = (char *) malloc(
                 (strlen(args.inputFilePath) + 5) * sizeof(char)
             );
+            if (!args.outputFilePath) {
+                fprintf(
+                    stderr, "Failed to allocate memory for output file path.\n"
+                );
+                return 1;
+            }
             sprintf(
                 args.outputFilePath,
                 "%s.%s",
