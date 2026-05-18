@@ -41,7 +41,9 @@
 #define BOOLEAN_ARGS BOOLEAN_ARG(help, "-h", "Show help")
 
 #include <easyargs.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/provider.h>
 #include <openssl/rand.h>
 
 int main(int argc, char **argv) {
@@ -52,6 +54,8 @@ int main(int argc, char **argv) {
         printf("\nSYMMETRIC ALGORITHMS:\n");
         printf(
             "    aes-256-cbc: AES encryption in CBC mode with 256-bit keys\n"
+            "    des-cbc: DES encryption in CBC mode\n"
+            "    3des-cbc: Triple DES encryption in CBC mode\n"
         );
         printf("\nKEY DERIVATION FUNCTIONS:\n");
         printf(
@@ -155,6 +159,15 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    OSSL_PROVIDER *default_provider = OSSL_PROVIDER_load(NULL, "default");
+    OSSL_PROVIDER *legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+
+    if (default_provider == NULL || legacy_provider == NULL) {
+        fprintf(stderr, "Failed to load OpenSSL providers\n");
+        ERR_print_errors_fp(stderr);
+        return 1;
+    }
+
     const EVP_CIPHER *cipher;
     if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
         cipher = EVP_aes_256_cbc();
@@ -199,9 +212,16 @@ int main(int argc, char **argv) {
         RAND_bytes(iv, ivSizeInBytes);
 
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) {
+            fprintf(stderr, "Failed to create cipher context.\n");
+            return 1;
+        }
         EVP_CIPHER_CTX_init(ctx);
 
-        EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv);
+        if (!EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv)) {
+            fprintf(stderr, "Failed to initialize encryption.\n");
+            return 1;
+        }
 
         outputBytes = (unsigned char *) malloc(
             (inputBytesSizeInBytes + EVP_CIPHER_block_size(cipher)) *
@@ -226,19 +246,40 @@ int main(int argc, char **argv) {
         fwrite(iv, sizeof(unsigned char), ivSizeInBytes, outputFileHandle);
 
         free(iv);
-    } else {
+    } else if (args.operation == 'd') {
+        if (inputBytesSizeInBytes < ivSizeInBytes) {
+            fprintf(
+                stderr,
+                "Invalid input file: too small to contain IV. Minimum size is "
+                "%zu bytes.\n",
+                ivSizeInBytes
+            );
+            return 1;
+        }
+
         memcpy(iv, inputBytes, ivSizeInBytes);
 
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) {
+            fprintf(stderr, "Failed to create cipher context.\n");
+            return 1;
+        }
         EVP_CIPHER_CTX_init(ctx);
 
-        EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv);
+        if (!EVP_DecryptInit_ex(ctx, cipher, NULL, key, iv)) {
+            fprintf(stderr, "Failed to initialize decryption.\n");
+            return 1;
+        }
 
         outputBytes = (unsigned char *) malloc(
             (inputBytesSizeInBytes - ivSizeInBytes +
              EVP_CIPHER_block_size(cipher)) *
             sizeof(unsigned char)
         );
+        if (!outputBytes) {
+            fprintf(stderr, "Failed to allocate memory for output bytes.\n");
+            return 1;
+        }
 
         int outLen = 0;
         EVP_DecryptUpdate(
@@ -256,6 +297,9 @@ int main(int argc, char **argv) {
         EVP_CIPHER_CTX_free(ctx);
 
         free(iv);
+    } else {
+        fprintf(stderr, "Invalid operation: %c\n", args.operation);
+        return 1;
     }
 
     fwrite(
