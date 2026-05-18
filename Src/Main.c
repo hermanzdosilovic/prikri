@@ -159,29 +159,45 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (args.operation == 'e') {
-        unsigned char *key = KDFPadWithZeros(
-            password, passwordSizeInBytes, AES_KEY_SIZE_IN_BYTES
+    size_t keySizeInBytes = 0;
+    if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
+        keySizeInBytes = AES_KEY_SIZE_IN_BYTES;
+    } else {
+        fprintf(
+            stderr,
+            "Unsupported symmetric algorithm: %s\n",
+            args.symmetricAlgorithm
         );
+        return 1;
+    }
 
-        unsigned char *iv, *outputBytes;
-        size_t outputBytesSizeInBytes = AES256CBCEncrypt(
+    unsigned char *key;
+    if (!strcmp(args.keyDerivationFunction, "zeropad")) {
+        key = KDFPadWithZeros(password, passwordSizeInBytes, keySizeInBytes);
+    } else {
+        fprintf(
+            stderr,
+            "Unsupported key derivation function: %s\n",
+            args.keyDerivationFunction
+        );
+        return 1;
+    }
+
+    unsigned char *outputBytes;
+    size_t outputBytesSizeInBytes;
+
+    if (args.operation == 'e') {
+        unsigned char *iv;
+        outputBytesSizeInBytes = AES256CBCEncrypt(
             inputBytes, inputBytesSizeInBytes, key, &iv, &outputBytes
         );
 
         fwrite(
             iv, sizeof(unsigned char), AES_IV_SIZE_IN_BYTES, outputFileHandle
         );
-        fwrite(
-            outputBytes,
-            sizeof(unsigned char),
-            outputBytesSizeInBytes,
-            outputFileHandle
-        );
 
-        free(key);
         free(iv);
-        free(outputBytes);
+
     } else {
         if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
             fprintf(stderr, "Invalid input file: too small to contain IV.\n");
@@ -193,12 +209,7 @@ int main(int argc, char **argv) {
         );
         memcpy(iv, inputBytes, AES_IV_SIZE_IN_BYTES);
 
-        unsigned char *key = KDFPadWithZeros(
-            password, passwordSizeInBytes, AES_KEY_SIZE_IN_BYTES
-        );
-
-        unsigned char *outputBytes;
-        size_t outputBytesSizeInBytes = AES256CBCDecrypt(
+        outputBytesSizeInBytes = AES256CBCDecrypt(
             inputBytes + AES_IV_SIZE_IN_BYTES,
             inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES,
             key,
@@ -206,17 +217,18 @@ int main(int argc, char **argv) {
             &outputBytes
         );
 
-        fwrite(
-            outputBytes,
-            sizeof(unsigned char),
-            outputBytesSizeInBytes,
-            outputFileHandle
-        );
-
-        free(key);
         free(iv);
-        free(outputBytes);
     }
+
+    fwrite(
+        outputBytes,
+        sizeof(unsigned char),
+        outputBytesSizeInBytes,
+        outputFileHandle
+    );
+
+    free(key);
+    free(outputBytes);
 
     return 0;
 }
