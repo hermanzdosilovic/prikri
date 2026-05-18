@@ -14,7 +14,7 @@ size_t ReadFileToBuffer(FILE *fileHandle, unsigned char **buffer) {
     *buffer =
         (unsigned char *) malloc(bufferCapacityInBytes * sizeof(unsigned char));
     if (!*buffer) {
-        printf("Failed to allocate memory for file buffer.\n");
+        fprintf(stderr, "Failed to allocate memory for file buffer.\n");
         return 0;
     }
 
@@ -26,7 +26,9 @@ size_t ReadFileToBuffer(FILE *fileHandle, unsigned char **buffer) {
                 *buffer, bufferCapacityInBytes * sizeof(unsigned char)
             );
             if (!*buffer) {
-                printf("Failed to reallocate memory for file buffer.\n");
+                fprintf(
+                    stderr, "Failed to reallocate memory for file buffer.\n"
+                );
                 free(*buffer);
                 return 0;
             }

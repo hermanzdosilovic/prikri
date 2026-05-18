@@ -10,7 +10,7 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     ProgramArguments *programArguments =
         (ProgramArguments *) malloc(sizeof(ProgramArguments));
     if (!programArguments) {
-        printf("Failed to allocate memory for program arguments.\n");
+        fprintf(stderr, "Failed to allocate memory for program arguments.\n");
         return NULL;
     }
 
@@ -20,7 +20,7 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     }
 
     if (strcmp(argv[1], "e") && strcmp(argv[1], "d")) {
-        printf("Invalid mode: %s\n", argv[1]);
+        fprintf(stderr, "Invalid mode: %s\n", argv[1]);
         PrintUsage(argv);
         return NULL;
     }
@@ -30,7 +30,7 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     if (argc >= 3) {
         programArguments->inputFilePath = argv[2];
     } else {
-        printf("Input file is required.\n");
+        fprintf(stderr, "Input file is required.\n");
         PrintUsage(argv);
         return NULL;
     }
@@ -42,7 +42,9 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
             (strlen(programArguments->inputFilePath) + 5) * sizeof(char)
         );
         if (programArguments->outputFilePath == NULL) {
-            printf("Failed to allocate memory for output file name.\n");
+            fprintf(
+                stderr, "Failed to allocate memory for output file name.\n"
+            );
             return NULL;
         }
 
@@ -57,8 +59,10 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     programArguments->inputFileHandle =
         fopen(programArguments->inputFilePath, "rb");
     if (!programArguments->inputFileHandle) {
-        printf(
-            "Failed to open input file: %s\n", programArguments->inputFilePath
+        fprintf(
+            stderr,
+            "Failed to open input file: %s\n",
+            programArguments->inputFilePath
         );
         return NULL;
     }
@@ -66,8 +70,10 @@ ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     programArguments->outputFileHandle =
         fopen(programArguments->outputFilePath, "wb");
     if (!programArguments->outputFileHandle) {
-        printf(
-            "Failed to open output file: %s\n", programArguments->outputFilePath
+        fprintf(
+            stderr,
+            "Failed to open output file: %s\n",
+            programArguments->outputFilePath
         );
         return NULL;
     }

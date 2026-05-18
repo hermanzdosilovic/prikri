@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         free(cipherText);
     } else {
         if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
-            printf("Invalid input file: too small to contain IV.\n");
+            fprintf(stderr, "Invalid input file: too small to contain IV.\n");
             return 1;
         }
 

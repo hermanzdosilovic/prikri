@@ -11,7 +11,7 @@ char *ReadPassword(char *prompt) {
 
     char *password = (char *) malloc(MAX_PASSWORD_SIZE_IN_BYTES * sizeof(char));
     if (!password) {
-        printf("Failed to allocate memory for password.\n");
+        fprintf(stderr, "Failed to allocate memory for password.\n");
         return NULL;
     }
 
@@ -42,14 +42,12 @@ char *PromptForPassword(bool confirm) {
         }
 
         if (strcmp(password, confirmedPassword)) {
-            printf("Passwords do not match.\n");
+            fprintf(stderr, "Passwords do not match.\n");
 
             free(password);
             free(confirmedPassword);
 
             return NULL;
-        } else {
-            printf("Passwords match.\n");
         }
 
         free(confirmedPassword);

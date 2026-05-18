@@ -3,5 +3,5 @@
 #include <stdio.h>
 
 void PrintUsage(char **argv) {
-    printf("Usage: %s [e|d] <input file> [output file]\n", argv[0]);
+    fprintf(stderr, "Usage: %s [e|d] <input file> [output file]\n", argv[0]);
 }

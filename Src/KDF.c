@@ -13,7 +13,7 @@ unsigned char *KDFPadWithZeros(
         encryptionKeySizeInBytes, sizeof(unsigned char)
     );
     if (!key) {
-        printf("Failed to allocate memory for encryption key.\n");
+        fprintf(stderr, "Failed to allocate memory for encryption key.\n");
         return NULL;
     }
 
