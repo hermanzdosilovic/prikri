@@ -5,7 +5,7 @@ SYMMETRIC_CIPHER="${1:-aes-256-cbc}"
 
 echo "This is my password for testing purposes." > password.txt
 
-dd if=/dev/urandom of=./random.bin bs=1M count=1024 status=progress # Creates a random 1GB file named random.bin
+dd if=/dev/urandom of=./random.bin bs=1M count=8 status=none # Creates a random 8MB file named random.bin
 
 ./prikri e random.bin -s "$SYMMETRIC_CIPHER" -p password.txt # Creates random.bin.enc
 
