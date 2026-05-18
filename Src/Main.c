@@ -18,11 +18,7 @@
 
 #define OPTIONAL_ARGS                                                          \
     OPTIONAL_STRING_ARG(                                                       \
-        passwordFilePath,                                                      \
-        "password.txt",                                                        \
-        "-p",                                                                  \
-        "password file",                                                       \
-        "Password file path"                                                   \
+        passwordFilePath, "", "-p", "password file", "Password file path"      \
     )                                                                          \
     OPTIONAL_STRING_ARG(                                                       \
         symmetricAlgorithm,                                                    \
@@ -81,7 +77,7 @@ int main(int argc, char **argv) {
 
     char *password;
     size_t passwordSizeInBytes;
-    if (args.passwordFilePath) {
+    if (args.passwordFilePath && strcmp(args.passwordFilePath, "")) {
         FILE *passwordFileHandle = fopen(args.passwordFilePath, "rb");
         if (!passwordFileHandle) {
             fprintf(
