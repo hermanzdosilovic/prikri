@@ -11,12 +11,16 @@
     )                                                                          \
     REQUIRED_STRING_ARG(                                                       \
         inputFilePath, "input file", "Input file path. Use '-' for stdin"      \
-    )                                                                          \
-    REQUIRED_STRING_ARG(                                                       \
-        outputFilePath, "output file", "Output file path. Use '-' for stdout"  \
     )
 
 #define OPTIONAL_ARGS                                                          \
+    OPTIONAL_STRING_ARG(                                                       \
+        outputFilePath,                                                        \
+        "",                                                                    \
+        "-o",                                                                  \
+        "output file",                                                         \
+        "Output file path. Use '-' for stdout"                                 \
+    )                                                                          \
     OPTIONAL_STRING_ARG(                                                       \
         passwordFilePath, "", "-p", "password file", "Password file path"      \
     )                                                                          \
@@ -73,6 +77,22 @@ int main(int argc, char **argv) {
             "Error: --password-file is required when output file is '-'.\n"
         );
         return 1;
+    }
+
+    if (!strcmp(args.outputFilePath, "")) {
+        if (!strcmp(args.inputFilePath, "-")) {
+            args.outputFilePath = "-";
+        } else {
+            args.outputFilePath = (char *) malloc(
+                (strlen(args.inputFilePath) + 5) * sizeof(char)
+            );
+            sprintf(
+                args.outputFilePath,
+                "%s.%s",
+                args.inputFilePath,
+                args.operation == 'e' ? "enc" : "dec"
+            );
+        }
     }
 
     char *password;
