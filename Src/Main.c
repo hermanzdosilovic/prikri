@@ -187,37 +187,59 @@ int main(int argc, char **argv) {
     size_t outputBytesSizeInBytes;
 
     if (args.operation == 'e') {
-        unsigned char *iv;
-        outputBytesSizeInBytes = AES256CBCEncrypt(
-            inputBytes, inputBytesSizeInBytes, key, &iv, &outputBytes
-        );
+        if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
+            unsigned char *iv;
+            outputBytesSizeInBytes = AES256CBCEncrypt(
+                inputBytes, inputBytesSizeInBytes, key, &iv, &outputBytes
+            );
 
-        fwrite(
-            iv, sizeof(unsigned char), AES_IV_SIZE_IN_BYTES, outputFileHandle
-        );
+            fwrite(
+                iv,
+                sizeof(unsigned char),
+                AES_IV_SIZE_IN_BYTES,
+                outputFileHandle
+            );
 
-        free(iv);
-
-    } else {
-        if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
-            fprintf(stderr, "Invalid input file: too small to contain IV.\n");
+            free(iv);
+        } else {
+            fprintf(
+                stderr,
+                "Unsupported symmetric algorithm: %s\n",
+                args.symmetricAlgorithm
+            );
             return 1;
         }
+    } else {
+        if (!strcmp(args.symmetricAlgorithm, "aes-256-cbc")) {
+            if (inputBytesSizeInBytes < AES_IV_SIZE_IN_BYTES) {
+                fprintf(
+                    stderr, "Invalid input file: too small to contain IV.\n"
+                );
+                return 1;
+            }
 
-        unsigned char *iv = (unsigned char *) malloc(
-            AES_IV_SIZE_IN_BYTES * sizeof(unsigned char)
-        );
-        memcpy(iv, inputBytes, AES_IV_SIZE_IN_BYTES);
+            unsigned char *iv = (unsigned char *) malloc(
+                AES_IV_SIZE_IN_BYTES * sizeof(unsigned char)
+            );
+            memcpy(iv, inputBytes, AES_IV_SIZE_IN_BYTES);
 
-        outputBytesSizeInBytes = AES256CBCDecrypt(
-            inputBytes + AES_IV_SIZE_IN_BYTES,
-            inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES,
-            key,
-            iv,
-            &outputBytes
-        );
+            outputBytesSizeInBytes = AES256CBCDecrypt(
+                inputBytes + AES_IV_SIZE_IN_BYTES,
+                inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES,
+                key,
+                iv,
+                &outputBytes
+            );
 
-        free(iv);
+            free(iv);
+        } else {
+            fprintf(
+                stderr,
+                "Unsupported symmetric algorithm: %s\n",
+                args.symmetricAlgorithm
+            );
+            return 1;
+        }
     }
 
     fwrite(
