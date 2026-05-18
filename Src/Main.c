@@ -1,4 +1,5 @@
 #include "ByteBuffer.h"
+#include "KDF.h"
 #include "Password.h"
 #include "ProgramArguments.h"
 #include "Usage.h"
@@ -14,24 +15,6 @@
 #define AES_KEY_SIZE_IN_BYTES 32
 #define AES_BLOCK_SIZE_IN_BYTES 16
 #define AES_IV_SIZE_IN_BYTES 16
-
-unsigned char *deriveEncryptionKeyPadWithZeros(
-    char *userKey,
-    size_t userKeySizeInBytes,
-    size_t encryptionKeySizeInBytes
-) {
-    unsigned char *key = (unsigned char *) calloc(
-        encryptionKeySizeInBytes, sizeof(unsigned char)
-    );
-
-    memcpy(
-        key,
-        userKey,
-        userKeySizeInBytes < encryptionKeySizeInBytes ? userKeySizeInBytes
-                                                      : encryptionKeySizeInBytes
-    );
-    return key;
-}
 
 size_t AES256CBCEncrypt(
     unsigned char *plainBytes,
@@ -103,7 +86,6 @@ size_t AES256CBCDecrypt(
 int main(int argc, char **argv) {
     ProgramArguments *programArguments = ParseProgramArguments(argc, argv);
     if (!programArguments) {
-        printf("Failed to parse program arguments.\n");
         return 1;
     }
 
@@ -111,20 +93,17 @@ int main(int argc, char **argv) {
     size_t inputBytesSizeInBytes =
         ReadFileToBuffer(programArguments->inputFileHandle, &inputBytes);
     if (!inputBytesSizeInBytes) {
-        printf("Failed to read input file to buffer.\n");
         return 1;
     }
 
     char *password = PromptForPassword(programArguments->isEncryptionMode);
     if (!password) {
-        printf("Failed to read password.\n");
         return 1;
     }
 
     if (programArguments->isEncryptionMode) {
-        unsigned char *key = deriveEncryptionKeyPadWithZeros(
-            password, strlen(password), AES_KEY_SIZE_IN_BYTES
-        );
+        unsigned char *key =
+            KDFPadWithZeros(password, strlen(password), AES_KEY_SIZE_IN_BYTES);
 
         unsigned char *iv, *cipherText;
         size_t cipherTextSizeInBytes = AES256CBCEncrypt(
@@ -162,9 +141,8 @@ int main(int argc, char **argv) {
         size_t cipherTextSizeInBytes =
             inputBytesSizeInBytes - AES_IV_SIZE_IN_BYTES;
 
-        unsigned char *key = deriveEncryptionKeyPadWithZeros(
-            password, strlen(password), AES_KEY_SIZE_IN_BYTES
-        );
+        unsigned char *key =
+            KDFPadWithZeros(password, strlen(password), AES_KEY_SIZE_IN_BYTES);
 
         unsigned char *plainText;
         size_t plainTextSizeInBytes = AES256CBCDecrypt(
