@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-char *readPassword(char *prompt);
-char *promptForPassword(bool confirm);
+char *ReadPassword(char *prompt);
+char *PromptForPassword(bool confirm);
 
 #endif

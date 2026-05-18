@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-ProgramArguments *parseProgramArguments(int argc, char **argv) {
+ProgramArguments *ParseProgramArguments(int argc, char **argv) {
     ProgramArguments *programArguments =
         (ProgramArguments *) malloc(sizeof(ProgramArguments));
     if (!programArguments) {
@@ -15,13 +15,13 @@ ProgramArguments *parseProgramArguments(int argc, char **argv) {
     }
 
     if (argc == 1) {
-        printUsage(argv);
+        PrintUsage(argv);
         return NULL;
     }
 
     if (strcmp(argv[1], "e") && strcmp(argv[1], "d")) {
         printf("Invalid mode: %s\n", argv[1]);
-        printUsage(argv);
+        PrintUsage(argv);
         return NULL;
     }
 
@@ -31,7 +31,7 @@ ProgramArguments *parseProgramArguments(int argc, char **argv) {
         programArguments->inputFilePath = argv[2];
     } else {
         printf("Input file is required.\n");
-        printUsage(argv);
+        PrintUsage(argv);
         return NULL;
     }
 

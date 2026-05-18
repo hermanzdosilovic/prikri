@@ -2,6 +2,6 @@
 
 #include <stdio.h>
 
-void printUsage(char **argv) {
+void PrintUsage(char **argv) {
     printf("Usage: %s [e|d] <input file> [output file]\n", argv[0]);
 }

@@ -13,6 +13,6 @@ typedef struct ProgramArguments {
     FILE *outputFileHandle;
 } ProgramArguments;
 
-ProgramArguments *parseProgramArguments(int argc, char **argv);
+ProgramArguments *ParseProgramArguments(int argc, char **argv);
 
 #endif

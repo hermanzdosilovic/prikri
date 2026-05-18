@@ -1,3 +1,4 @@
+#include "ByteBuffer.h"
 #include "Password.h"
 #include "ProgramArguments.h"
 #include "Usage.h"
@@ -13,13 +14,6 @@
 #define AES_KEY_SIZE_IN_BYTES 32
 #define AES_BLOCK_SIZE_IN_BYTES 16
 #define AES_IV_SIZE_IN_BYTES 16
-
-#define MAX_PASSWORD_SIZE_IN_BYTES 4096
-
-#define READ_BUFFER_BLOCK_SIZE_IN_BYTES 1024
-#define READ_BUFFER_INITIAL_CAPACITY_IN_BYTES 1024
-#define READ_BUFFER_CAPACITY_MULTIPLIER 2
-#define READ_BUFFER_MAX_CAPACITY_IN_BYTES (1024 * 1024 * 1024 * 128)
 
 unsigned char *deriveEncryptionKeyPadWithZeros(
     char *userKey,
@@ -106,48 +100,26 @@ size_t AES256CBCDecrypt(
     return plainBytesSizeInBytes;
 }
 
-size_t readFileToBuffer(FILE *fileHandle, unsigned char **buffer) {
-    size_t bufferCapacityInBytes = READ_BUFFER_INITIAL_CAPACITY_IN_BYTES;
-    size_t bufferSizeInBytes = 0;
-    *buffer =
-        (unsigned char *) malloc(bufferCapacityInBytes * sizeof(unsigned char));
-
-    while (1) {
-        while (bufferSizeInBytes + READ_BUFFER_BLOCK_SIZE_IN_BYTES >
-               bufferCapacityInBytes) {
-            bufferCapacityInBytes *= READ_BUFFER_CAPACITY_MULTIPLIER;
-            *buffer = (unsigned char *) realloc(
-                *buffer, bufferCapacityInBytes * sizeof(unsigned char)
-            );
-        }
-
-        size_t bytesRead = fread(
-            *buffer + bufferSizeInBytes,
-            sizeof(unsigned char),
-            READ_BUFFER_BLOCK_SIZE_IN_BYTES,
-            fileHandle
-        );
-        bufferSizeInBytes += bytesRead;
-
-        if (bytesRead < READ_BUFFER_BLOCK_SIZE_IN_BYTES) {
-            break;
-        }
-    }
-
-    return bufferSizeInBytes;
-}
-
 int main(int argc, char **argv) {
-    ProgramArguments *programArguments = parseProgramArguments(argc, argv);
+    ProgramArguments *programArguments = ParseProgramArguments(argc, argv);
     if (!programArguments) {
+        printf("Failed to parse program arguments.\n");
         return 1;
     }
 
     unsigned char *inputBytes;
     size_t inputBytesSizeInBytes =
-        readFileToBuffer(programArguments->inputFileHandle, &inputBytes);
+        ReadFileToBuffer(programArguments->inputFileHandle, &inputBytes);
+    if (!inputBytesSizeInBytes) {
+        printf("Failed to read input file to buffer.\n");
+        return 1;
+    }
 
-    char *password = promptForPassword(programArguments->isEncryptionMode);
+    char *password = PromptForPassword(programArguments->isEncryptionMode);
+    if (!password) {
+        printf("Failed to read password.\n");
+        return 1;
+    }
 
     if (programArguments->isEncryptionMode) {
         unsigned char *key = deriveEncryptionKeyPadWithZeros(

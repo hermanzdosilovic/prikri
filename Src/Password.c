@@ -6,7 +6,7 @@
 
 #define MAX_PASSWORD_SIZE_IN_BYTES 256
 
-char *readPassword(char *prompt) {
+char *ReadPassword(char *prompt) {
     printf("%s", prompt);
 
     char *password = (char *) malloc(MAX_PASSWORD_SIZE_IN_BYTES * sizeof(char));
@@ -28,31 +28,31 @@ char *readPassword(char *prompt) {
     return password;
 }
 
-char *promptForPassword(bool confirm) {
-    char *password = readPassword("Enter password: ");
+char *PromptForPassword(bool confirm) {
+    char *password = ReadPassword("Enter password: ");
     if (!password) {
         return NULL;
     }
 
     if (confirm) {
-        char *confirm_password = readPassword("Confirm password: ");
-        if (!confirm_password) {
+        char *confirmedPassword = ReadPassword("Confirm password: ");
+        if (!confirmedPassword) {
             free(password);
             return NULL;
         }
 
-        if (strcmp(password, confirm_password)) {
+        if (strcmp(password, confirmedPassword)) {
             printf("Passwords do not match.\n");
 
             free(password);
-            free(confirm_password);
+            free(confirmedPassword);
 
             return NULL;
         } else {
             printf("Passwords match.\n");
         }
 
-        free(confirm_password);
+        free(confirmedPassword);
     }
 
     return password;
