@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c99 -Wall -Wextra -Wnull-dereference -Werror -Wfatal-errors -pedantic -pedantic-errors
 LDFLAGS = -lcrypto
 TARGET = prikri
-SRC = main.c
+SRC = Src/Main.c Src/ProgramArguments.c Src/Usage.c Src/Password.c
 
 all: $(TARGET)
 
