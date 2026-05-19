@@ -69,6 +69,7 @@ unsigned char *KDFSHA(
     }
 
     EVP_MD_CTX_free(ctx);
+
     return KDFPadWithZeros(
         (char *) digest, digestSizeInBytes, encryptionKeySizeInBytes
     );
