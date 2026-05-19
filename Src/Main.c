@@ -209,7 +209,10 @@ int main(int argc, char **argv) {
     size_t outputBytesSizeInBytes = 0;
 
     if (args.operation == 'e') {
-        RAND_bytes(iv, ivSizeInBytes);
+        if (RAND_bytes(iv, ivSizeInBytes) != 1) {
+            fprintf(stderr, "Failed to generate random IV.\n");
+            return 1;
+        }
 
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
@@ -233,17 +236,28 @@ int main(int argc, char **argv) {
         }
 
         int outLen = 0;
-        EVP_EncryptUpdate(
-            ctx, outputBytes, &outLen, inputBytes, inputBytesSizeInBytes
-        );
+        if (!EVP_EncryptUpdate(
+                ctx, outputBytes, &outLen, inputBytes, inputBytesSizeInBytes
+            )) {
+            fprintf(stderr, "Failed to encrypt the input bytes.\n");
+            return 1;
+        }
 
         outputBytesSizeInBytes = outLen;
-        EVP_EncryptFinal_ex(ctx, outputBytes + outLen, &outLen);
+        if (!EVP_EncryptFinal_ex(ctx, outputBytes + outLen, &outLen)) {
+            fprintf(stderr, "Failed to finalize encryption.\n");
+            return 1;
+        }
         outputBytesSizeInBytes += outLen;
 
         EVP_CIPHER_CTX_free(ctx);
 
-        fwrite(iv, sizeof(unsigned char), ivSizeInBytes, outputFileHandle);
+        if (fwrite(
+                iv, sizeof(unsigned char), ivSizeInBytes, outputFileHandle
+            ) != ivSizeInBytes) {
+            fprintf(stderr, "Failed to write IV to output file.\n");
+            return 1;
+        }
 
         free(iv);
     } else if (args.operation == 'd') {
@@ -282,16 +296,22 @@ int main(int argc, char **argv) {
         }
 
         int outLen = 0;
-        EVP_DecryptUpdate(
-            ctx,
-            outputBytes,
-            &outLen,
-            inputBytes + ivSizeInBytes,
-            inputBytesSizeInBytes - ivSizeInBytes
-        );
+        if (!EVP_DecryptUpdate(
+                ctx,
+                outputBytes,
+                &outLen,
+                inputBytes + ivSizeInBytes,
+                inputBytesSizeInBytes - ivSizeInBytes
+            )) {
+            fprintf(stderr, "Failed to decrypt the input bytes.\n");
+            return 1;
+        }
 
         outputBytesSizeInBytes = outLen;
-        EVP_DecryptFinal_ex(ctx, outputBytes + outLen, &outLen);
+        if (!EVP_DecryptFinal_ex(ctx, outputBytes + outLen, &outLen)) {
+            fprintf(stderr, "Failed to finalize decryption.\n");
+            return 1;
+        }
         outputBytesSizeInBytes += outLen;
 
         EVP_CIPHER_CTX_free(ctx);
@@ -302,12 +322,15 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    fwrite(
-        outputBytes,
-        sizeof(unsigned char),
-        outputBytesSizeInBytes,
-        outputFileHandle
-    );
+    if (fwrite(
+            outputBytes,
+            sizeof(unsigned char),
+            outputBytesSizeInBytes,
+            outputFileHandle
+        ) != outputBytesSizeInBytes) {
+        fprintf(stderr, "Failed to write output bytes to file.\n");
+        return 1;
+    }
 
     free(key);
     free(outputBytes);
