@@ -5,7 +5,7 @@
 #define READ_BUFFER_BLOCK_SIZE_IN_BYTES 1024
 #define READ_BUFFER_INITIAL_CAPACITY_IN_BYTES 1024
 #define READ_BUFFER_CAPACITY_MULTIPLIER 2
-#define READ_BUFFER_MAX_CAPACITY_IN_BYTES (1024 * 1024 * 1024 * 128)
+#define READ_BUFFER_MAX_CAPACITY_IN_BYTES ((size_t) 1024 * 1024 * 1024 * 128)
 
 size_t ReadFileToBuffer(FILE *fileHandle, void **buffer) {
     size_t bufferCapacityInBytes = READ_BUFFER_INITIAL_CAPACITY_IN_BYTES;
@@ -21,6 +21,18 @@ size_t ReadFileToBuffer(FILE *fileHandle, void **buffer) {
         while (bufferSizeInBytes + READ_BUFFER_BLOCK_SIZE_IN_BYTES >
                bufferCapacityInBytes) {
             bufferCapacityInBytes *= READ_BUFFER_CAPACITY_MULTIPLIER;
+
+            if (bufferCapacityInBytes > READ_BUFFER_MAX_CAPACITY_IN_BYTES) {
+                fprintf(
+                    stderr,
+                    "File is too large to read into buffer (exceeds %zu "
+                    "bytes).\n",
+                    READ_BUFFER_MAX_CAPACITY_IN_BYTES
+                );
+                free(*buffer);
+                return 0;
+            }
+
             *buffer = (void *) realloc(*buffer, bufferCapacityInBytes);
             if (!*buffer) {
                 fprintf(
