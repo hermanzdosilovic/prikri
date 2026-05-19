@@ -332,6 +332,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    if (strcmp(args.outputFilePath, "-")) {
+        printf(
+            "%scryption result written to %s\n",
+            args.operation == 'e' ? "En" : "De",
+            args.outputFilePath
+        );
+    }
+
     free(key);
     free(outputBytes);
 
