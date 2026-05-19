@@ -65,20 +65,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (!strcmp(args.inputFilePath, "-") && !args.passwordFilePath) {
-        fprintf(
-            stderr,
-            "Error: --password-file is required when input file is '-'.\n"
-        );
-        return 1;
-    } else if (strcmp(args.outputFilePath, "-") && !args.passwordFilePath) {
-        fprintf(
-            stderr,
-            "Error: --password-file is required when output file is '-'.\n"
-        );
-        return 1;
-    }
-
     if (!strcmp(args.outputFilePath, "")) {
         if (!strcmp(args.inputFilePath, "-")) {
             args.outputFilePath = "-";
@@ -99,6 +85,23 @@ int main(int argc, char **argv) {
                 args.operation == 'e' ? "enc" : "dec"
             );
         }
+    }
+
+    if (!strcmp(args.inputFilePath, "-") &&
+        !strcmp(args.passwordFilePath, "")) {
+        fprintf(
+            stderr,
+            "Error: --password-file is required when input file is '-'.\n"
+        );
+        return 1;
+    } else if (
+        !strcmp(args.outputFilePath, "-") &&
+        !strcmp(args.passwordFilePath, "")) {
+        fprintf(
+            stderr,
+            "Error: --password-file is required when output file is '-'.\n"
+        );
+        return 1;
     }
 
     char *password;
