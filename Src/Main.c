@@ -32,7 +32,7 @@
     )                                                                          \
     OPTIONAL_STRING_ARG(                                                       \
         keyDerivationFunction,                                                 \
-        "zeropad",                                                             \
+        "sha3-256",                                                            \
         "-k",                                                                  \
         "key derivation function",                                             \
         "Key derivation function to use"                                       \
@@ -115,6 +115,50 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    const EVP_CIPHER *cipher;
+    if (!strcmp(args.symmetricCipher, "aes-256-cbc")) {
+        cipher = EVP_aes_256_cbc();
+    } else if (!strcmp(args.symmetricCipher, "des-cbc")) {
+        cipher = EVP_des_cbc();
+    } else if (!strcmp(args.symmetricCipher, "3des-cbc")) {
+        cipher = EVP_des_ede3_cbc();
+    } else {
+        fprintf(
+            stderr,
+            "Unsupported symmetric algorithm: %s\n",
+            args.symmetricCipher
+        );
+        return 1;
+    }
+
+    if (strcmp(args.keyDerivationFunction, "zeropad") &&
+        !EVP_get_digestbyname(args.keyDerivationFunction)) {
+        fprintf(
+            stderr,
+            "Unsupported key derivation function: %s\n",
+            args.keyDerivationFunction
+        );
+        return 1;
+    }
+
+    FILE *inputFileHandle = strcmp(args.inputFilePath, "-")
+                                ? fopen(args.inputFilePath, "rb")
+                                : stdin;
+    if (!inputFileHandle) {
+        fprintf(stderr, "Failed to open input file: %s\n", args.inputFilePath);
+        return 1;
+    }
+
+    FILE *outputFileHandle = strcmp(args.outputFilePath, "-")
+                                 ? fopen(args.outputFilePath, "wb")
+                                 : stdout;
+    if (!outputFileHandle) {
+        fprintf(
+            stderr, "Failed to open output file: %s\n", args.outputFilePath
+        );
+        return 1;
+    }
+
     char *password;
     size_t passwordSizeInBytes;
     if (args.passwordFilePath && strcmp(args.passwordFilePath, "")) {
@@ -148,24 +192,6 @@ int main(int argc, char **argv) {
         passwordSizeInBytes = strlen(password);
     }
 
-    FILE *inputFileHandle = strcmp(args.inputFilePath, "-")
-                                ? fopen(args.inputFilePath, "rb")
-                                : stdin;
-    if (!inputFileHandle) {
-        fprintf(stderr, "Failed to open input file: %s\n", args.inputFilePath);
-        return 1;
-    }
-
-    FILE *outputFileHandle = strcmp(args.outputFilePath, "-")
-                                 ? fopen(args.outputFilePath, "wb")
-                                 : stdout;
-    if (!outputFileHandle) {
-        fprintf(
-            stderr, "Failed to open output file: %s\n", args.outputFilePath
-        );
-        return 1;
-    }
-
     unsigned char *inputBytes;
     size_t inputBytesSizeInBytes =
         ReadFileToBuffer(inputFileHandle, (void **) &inputBytes);
@@ -179,22 +205,6 @@ int main(int argc, char **argv) {
     if (default_provider == NULL || legacy_provider == NULL) {
         fprintf(stderr, "Failed to load OpenSSL providers\n");
         ERR_print_errors_fp(stderr);
-        return 1;
-    }
-
-    const EVP_CIPHER *cipher;
-    if (!strcmp(args.symmetricCipher, "aes-256-cbc")) {
-        cipher = EVP_aes_256_cbc();
-    } else if (!strcmp(args.symmetricCipher, "des-cbc")) {
-        cipher = EVP_des_cbc();
-    } else if (!strcmp(args.symmetricCipher, "3des-cbc")) {
-        cipher = EVP_des_ede3_cbc();
-    } else {
-        fprintf(
-            stderr,
-            "Unsupported symmetric algorithm: %s\n",
-            args.symmetricCipher
-        );
         return 1;
     }
 
