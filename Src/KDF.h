@@ -9,4 +9,11 @@ unsigned char *KDFPadWithZeros(
     size_t encryptionKeySizeInBytes
 );
 
+unsigned char *KDFSHA(
+    char *userKey,
+    size_t userKeySizeInBytes,
+    size_t encryptionKeySizeInBytes,
+    char *algorithm
+);
+
 #endif

@@ -61,6 +61,17 @@ int main(int argc, char **argv) {
         printf(
             "    zeropad: Derive key by padding password with zeros or "
             "truncating to fit key size\n"
+            "    sha1: Derive key using SHA-1 hash function\n"
+            "    sha224: Derive key using SHA-224 hash function\n"
+            "    sha256: Derive key using SHA-256 hash function\n"
+            "    sha384: Derive key using SHA-384 hash function\n"
+            "    sha512: Derive key using SHA-512 hash function\n"
+            "    sha512-224: Derive key using SHA-512/224 hash function\n"
+            "    sha512-256: Derive key using SHA-512/256 hash function\n"
+            "    sha3-224: Derive key using SHA3-224 hash function\n"
+            "    sha3-256: Derive key using SHA3-256 hash function\n"
+            "    sha3-384: Derive key using SHA3-384 hash function\n"
+            "    sha3-512: Derive key using SHA3-512 hash function\n"
         );
         return 1;
     }
@@ -192,6 +203,31 @@ int main(int argc, char **argv) {
     unsigned char *key;
     if (!strcmp(args.keyDerivationFunction, "zeropad")) {
         key = KDFPadWithZeros(password, passwordSizeInBytes, keySizeInBytes);
+        if (!key) {
+            fprintf(stderr, "Failed to derive key using zero padding KDF.\n");
+            return 1;
+        }
+    } else if (!strncmp(args.keyDerivationFunction, "sha", 3)) {
+        const EVP_MD *md = EVP_get_digestbyname(args.keyDerivationFunction);
+        if (!md) {
+            fprintf(
+                stderr,
+                "Unsupported key derivation function: %s\n",
+                args.keyDerivationFunction
+            );
+            return 1;
+        }
+
+        key = KDFSHA(
+            password,
+            passwordSizeInBytes,
+            keySizeInBytes,
+            args.keyDerivationFunction
+        );
+        if (!key) {
+            fprintf(stderr, "Failed to derive key using SHA KDF.\n");
+            return 1;
+        }
     } else {
         fprintf(
             stderr,
